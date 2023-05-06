@@ -1,14 +1,12 @@
-# Nama: Shafira Putri Novia Hartanti
-# NPM: 1906293316
-
 import logging
+import pprint
 import threading
 import time
 import random
 
-from node_socket import UdpSocket
 from pprint import pformat
-from state import State, client_logs
+
+from node_socket import UdpSocket
 
 
 class Order:
@@ -18,197 +16,161 @@ class Order:
 
 class General:
 
-    def __init__(self, my_id: int, is_traitor: bool, my_port: int,
-                 ports: list, node_socket: UdpSocket, city_port: int, state: State):
-        self.ports = ports
+    def __init__(self, my_id: int, is_traitor: bool, my_port: int, ports: list, 
+                 node_socket: UdpSocket, city_port: int, number_of_general: int):
         self.my_id = my_id
         self.city_port = city_port
         self.node_socket = node_socket
         self.my_port = my_port
         self.is_traitor = is_traitor
-        self.state = state
+        self.orders = []
+        self.number_of_general = number_of_general
+
+        self.general_port_dictionary = {}
+        for i in range(0, self.number_of_general):
+            self.general_port_dictionary[i] = ports[i] 
+        logging.debug(f"self.general_port_dictionary: {pformat(self.general_port_dictionary)}")
+
+        self.port_general_dictionary = {}
+        for key, value in self.general_port_dictionary.items():
+            self.port_general_dictionary[value] = key
+        logging.debug(f"self.port_general_dictionary: {pprint.pformat(self.port_general_dictionary)}")
 
     def start(self):
-        messages = []
+        self.add_log_info("Start listening for incoming messages...")
+        for i in range(self.number_of_general - 1):
+            incoming_message: list = self.listen_procedure()
+            sender = incoming_message[0]
+            self.add_log_info(f"Got incoming message from {sender}: {incoming_message}")
 
-        # Receiving message from supreme general
-        logging.info(f"Start listening on port {self.my_port} for incoming messages...")
-        self.state.add_log(f"Node - Start listening for incoming messages...")
-        print(self.state)
-        supreme_message = self.listen_procedure()
-        logging.info(f"Got incoming message from supreme_general: {supreme_message}")
+            order = int(incoming_message[1].split("=")[1])
+            self.orders.append(order)
+            self.add_log_info(f"Append message to a list: {pformat(self.orders)}")
 
-        # Get order message
-        messages.append(int(supreme_message[1].split("=")[1]))
-        logging.info(f"Append message to a list: {messages}")
+            self.sending_procedure(sender, order)
 
-        # Send message to other generals
-        logging.info("Send supreme general order to other generals with threading...")
-        self.sending_procedure(f"supreme_general", messages[0])
+        self.conclude_action(self.orders)
 
-        # Receiving message from other generals
-        for i in range (2):
-            message = self.listen_procedure()
-            messages.append(int(message[1].split("=")[1]))
-            logging.info(f"Append message to a list: {messages}")
-
-        # Conclude action from other generals messages
-        self.conclude_action(messages)
-        return None
+    def _most_common(self, lst):
+        return max(set(lst), key=lst.count)
 
     def listen_procedure(self):
-        # Getting message from other
-        bytes_address_pair = self.node_socket.listen()
-
-        message = bytes_address_pair[0].split("~")
-        logging.info(f"Got incoming message from {message[0]}: {message}")
-
-        return message
+        input_value, address = self.node_socket.listen()
+        logging.debug(f"input_value: {input_value}")
+        logging.debug(f"address: {address}")
+        incoming_message: list = input_value.split("~")
+        return incoming_message
 
     def sending_procedure(self, sender, order):
-        if sender != "supreme_general":
-            return None
-
-        # Check if general is a traitor
-        if self.is_traitor:
-            # If general is a traitor, change order the opposite
-            order = 1 if order == 0 else 0
-
-        # Define the message
-        message = f"general_{self.my_id}~order={order}"
-        logging.info(f"message: {message}")
-
-        # Send message to other generals
-        for id in range(1,4):
-            if self.ports[id] != self.my_port:
-                self.node_socket.send(message, self.ports[id])
-                logging.info(f"Done sending message to general {id}...")
-
-        return message
+        if sender == "supreme_general":
+            self.add_log_info("Send supreme general order to other generals with threading...")
+            if self.is_traitor:
+                order = Order.ATTACK if order == Order.RETREAT else Order.RETREAT
+            message = f"general_{self.my_id}~order={order}"
+            self.add_log_info(f"message: {message}")
+            for other_general_port, value in self.port_general_dictionary.items():
+                if value == 0:
+                    continue
+                if other_general_port == self.my_port:
+                    continue
+                self.add_log_info("Initiate threading to send the message...")
+                thread = threading.Thread(target=self.node_socket.send,
+                                          args=(message, other_general_port))
+                self.add_log_info("Start threading...")
+                thread.start()
+                self.add_log_info(f"Done sending message "
+                             f"to general {self.port_general_dictionary[other_general_port]}...")
+            return message
 
     def conclude_action(self, orders):
-
-        logging.info("Concluding action...")
-
-        # Count ATTACK and RETREAT order
-        count_0 = orders.count(0)
-        count_1 = orders.count(1)
-        order = 2
-
-        # Conclude action from order count
+        self.add_log_info("Concluding action...")
+        logging.debug(f"is_traitor: {self.is_traitor}")
         if self.is_traitor:
-            logging.info("I am a traitor...")
-        elif count_0 > count_1:
-            order = 0
-            logging.info("action: RETREAT")
-            logging.info("Done doing my action...")
-        elif count_0 < count_1:
-            order = 1
-            logging.info("action: ATTACK")
-            logging.info("Done doing my action...")
-
-        # Send action message to city
-        time.sleep(1)
-        message = f"general_{self.my_id}~action={order}"
-        self.node_socket.send(message, self.city_port)
-
+            self.add_log_info("I am a traitor...")
+            return None
+        else:
+            order = self._most_common(orders)
+            action = "ATTACK" if order else "RETREAT"
+            self.add_log_info(f"action: {action}")
+            message = f"general_{self.my_id}~action={order}"
+            logging.debug(f"self.city_port: {self.city_port}")
+            self.node_socket.send(message, self.city_port)
+            self.add_log_info("Done doing my action...")
         return message
+    
+    def add_log_info(self, message):
+        logging.info(f"General{self.my_id}-{message}")
 
 
 class SupremeGeneral(General):
 
-    def __init__(self, my_id: int, is_traitor: bool, my_port: int, ports: list,
-                 node_socket: UdpSocket, city_port: int, order: Order, state: State):
-        super().__init__(my_id, is_traitor, my_port, ports, node_socket, city_port, state)
+    def __init__(self, my_id: int, is_traitor: bool, my_port: int, ports: list, 
+                 node_socket: UdpSocket, city_port: int, number_of_general: int,
+                 order: Order):
+        super().__init__(my_id, is_traitor, my_port, ports, node_socket, city_port, number_of_general)
         self.order = order
+        logging.debug(f"city_port: {city_port}")
 
     def sending_procedure(self, sender, order):
-
         result = []
-
-        for id in range(1,4):
-            logging.info(f"Sending message to general {id} with port {self.ports[id]}")
-
-            # Check if supreme general is a traitor
+        message = f"{sender}~order="
+        for i in range(1, len(self.port_general_dictionary)):
+            general_port = self.general_port_dictionary[i]
+            logging.debug(f"my_port: {self.my_port}")
+            logging.debug(f"general_port: {general_port}")
+            self.add_log_info(f"Send message to general {i} with port {general_port}")
             if self.is_traitor:
-                if id % 2 == 0:
-                    # If supreme general is a traitor, sends a retreat command to even-numbered generals
-                    order = Order.RETREAT
-                elif id % 2 == 1:
-                    # If supreme general is a traitor, sends an attack command to the odd-numbered generals
-                    order = Order.ATTACK
-
-            # Send message to other generals
-            self.node_socket.send(f"{sender}~order={order}", self.ports[id])
+                random_order = random.randint(0,1)
+                order = Order.RETREAT if random_order == 0 else Order.ATTACK
             result.append(order)
-
-        logging.info("Finish sending message to other generals...")
-
+            message_send = f"{message}{order}"
+            self.node_socket.send(message_send, general_port)
+        self.add_log_info("Finish sending message to other generals...")
         return result
 
     def start(self):
-        logging.info("Supreme general is starting...")
+        self.add_log_info("Supreme general is starting...")
+        self.add_log_info("Wait until all generals are running...")
+        time.sleep(0.2)
+        result = self.sending_procedure("supreme_general", self.order)
 
-        logging.info("Wait until all generals are running...")
-        time.sleep(1)
-
-        # Send message to other generals
-        self.sending_procedure("supreme_general", self.order)
-        time.sleep(1)
-
-        # Conclude action
-        self.conclude_action([self.order])
-        return None
+        self.conclude_action(result)
 
     def conclude_action(self, orders):
-        """
-        TODO
-        :param orders: list
-        :return: str or None
-        """
-        logging.info("Concluding action...")
-        order = 2
-
-        # Conclude action
+        self.add_log_info("Concluding action...")
         if self.is_traitor:
-            logging.info("I am a traitor...")
-        elif self.order == 0:
-            order = 0
-            logging.info("RETREAT from the city...")
-            logging.info("Done doing my action...")
-        elif self.order == 1:
-            order = 1
-            logging.info("ATTACK the city")
-            logging.info("Done doing my action...")
+            self.add_log_info("I am a traitor...")
+            return
+        elif self.order:
+            self.add_log_info("ATTACK the city...")
+        else:
+            self.add_log_info("RETREAT from the city...")
 
-        # Send action message to city
-        logging.info("Send information to city...")
-        message = f"supreme_general~action={order}"
+        self.add_log_info("Send information to city...")
+        message = f"supreme_general~action={self.order}"
+        logging.debug(f"message: {message}")
+        logging.debug(f"self.city_port: {self.city_port}")
         self.node_socket.send(message, self.city_port)
-        logging.info("Done sending information...")
-
+        self.add_log_info("Done sending information...")
         return message
+    
+    def add_log_info(self, message):
+        logging.info(f"SupremeGeneral-{message}")
 
 
 def thread_exception_handler(args):
     logging.error(f"Uncaught exception", exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
 
 
-def main(state: State, client_id: str, is_traitor: bool, node_id: int, ports: list,
+def main(is_traitor: bool, node_id: int, ports: list, number_of_general: int,
          my_port: int = 0, order: Order = Order.RETREAT,
-         is_supreme_general: bool = False, city_port: int = 0,
-         ):
-    print("in node main")
-    print(state)
-    print(state.name)
+         is_supreme_general: bool = False, city_port: int = 0):
     threading.excepthook = thread_exception_handler
     try:
         if node_id > 0:
             logging.info(f"General {node_id} is running...")
-            state.add_log(f"General {node_id} is running...")
         else:
             logging.info("Supreme general is running...")
-            state.add_log("Supreme general is running...")
         logging.debug(f"is_traitor: {is_traitor}")
         logging.debug(f"ports: {pformat(ports)}")
         logging.debug(f"my_port: {my_port}")
@@ -222,20 +184,17 @@ def main(state: State, client_id: str, is_traitor: bool, node_id: int, ports: li
                                  is_traitor=is_traitor,
                                  node_socket=UdpSocket(my_port),
                                  my_port=my_port,
-                                 ports=ports, order=order,
-                                 state=state)
+                                 ports=ports, order=order, 
+                                 number_of_general = number_of_general)
         else:
             obj = General(my_id=node_id,
                           city_port=city_port,
                           is_traitor=is_traitor,
                           node_socket=UdpSocket(my_port),
                           my_port=my_port,
-                          ports=ports,
-                          state=state)
+                          ports=ports, 
+                          number_of_general = number_of_general)
         obj.start()
-        print(client_logs)
-        # client_logs[client_id].append("Node starting.")
-        # print(client_id)
     except Exception:
         logging.exception("Caught Error")
         raise

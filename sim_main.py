@@ -3,6 +3,7 @@ import multiprocessing
 import pprint
 import random
 import sys
+import uuid
 from argparse import ArgumentParser
 
 # RUN IN PYTHON 3.8.8
@@ -10,6 +11,8 @@ import city
 import node
 
 list_nodes = []
+
+used_port = set()
 
 logging.basicConfig(format='%(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
                     datefmt='%Y-%m-%d:%H:%M:%S',
@@ -28,7 +31,7 @@ class NodeProcess(multiprocessing.Process):
 def reload_logging_config_node(filename):
     from importlib import reload
     reload(logging)
-    logging.basicConfig(format='%(asctime)-4s %(levelname)-6s %(threadName)s:%(lineno)-3d %(message)s',
+    logging.basicConfig(format='%(asctime)-4s-%(message)s',
                         datefmt='%H:%M:%S',
                         filename=f"logs/{filename}",
                         filemode='w',
@@ -55,19 +58,50 @@ def main():
     logger.debug(f"roles: {pprint.pformat(roles)}")
     logger.debug(f"order: {order}")
     logger.info("Done processing args...")
-    execution(roles, order)
+
+    execution(roles, order, str(uuid.uuid4()))
 
 
-def execution(roles, order):
+def execution(roles, order, session_id):
+    """
+    Execute byzantine generals problem scenario.
+
+    Parameters
+    ----------
+    roles : list
+        List of generals' role (default is None). 
+        Role is True when general is a traitor and False when general is loyal.
+        Example: [False, True, False, False]
+
+    order : string
+        Supreme general command.
+        Command: ATTACK or RETREAT
+
+    """
+    global used_port
+
     logger = logging.getLogger(__name__)
+
+    number_of_general = len(roles)
 
     sys.excepthook = handle_exception
 
     logger.info("The main program is running...")
+
     logger.info("Determining the ports that will be used...")
-    starting_port = random.randint(10000, 11000)
-    port_used = [port for port in range(starting_port, starting_port + 4)]
-    logger.debug(f"port_used: {port_used}")
+
+    while True:
+        starting_port = random.randint(10000, 11000)
+        node_ports = [port for port in range(starting_port, starting_port + number_of_general)]
+        
+        port_set = set(node_ports)
+        same_port = used_port.intersection(node_ports)
+        if len(same_port) == 0:
+            break
+
+    used_port = used_port.union(port_set)
+    
+    logger.debug(f"node_ports: {node_ports}")
     logger.info("Done determining the ports that will be used...")
 
     logger.info("Convert order string to binary...")
@@ -75,42 +109,48 @@ def execution(roles, order):
     logger.debug(f"order: {order}")
     logger.info("Done converting string to binary...")
 
+    reload_logging_config_node(f"{session_id}.txt")
+
     logger.info("Start running multiple nodes...")
-    for node_id in range(4):
+    for node_id in range(number_of_general):
         is_supreme_general = False if node_id else True
-        file_name_prefix = f"general{node_id}" if not is_supreme_general else "supreme_general"
-        reload_logging_config_node(f"{file_name_prefix}.txt")
+        # file_name_prefix = f"general{node_id}" if not is_supreme_general else "supreme_general"
+        # reload_logging_config_node(f"{file_name_prefix}.txt")
+        logger.debug(f"General port: {starting_port + node_id}")
         if is_supreme_general:
             process = NodeProcess(target=node.main, args=(
                 roles[node_id],
                 node_id,
-                port_used,
+                node_ports,
+                number_of_general,
                 starting_port + node_id,
                 order,
                 is_supreme_general,
-                starting_port + 4
+                starting_port + number_of_general,
+                
             ))
         else:
             process = NodeProcess(target=node.main, args=(
                 roles[node_id],
                 node_id,
-                port_used,
+                node_ports,
+                number_of_general,
                 starting_port + node_id,
                 order,
                 False,
-                starting_port + 4
+                starting_port + number_of_general,  
             ))
         process.start()
         list_nodes.append(process)
+
     logger.info("Done running multiple nodes...")
     logger.debug(f"number of running processes: {len(list_nodes)}")
 
     logger.info("Running city...")
-    reload_logging_config_node(f"city.txt")
+    # reload_logging_config_node(f"city.txt")
     number_general = roles.count(False)
     logger.debug(f"number_general: {number_general}")
-    return city.main(starting_port+4, number_general)
-
+    return city.main(starting_port+number_of_general, number_general)
 
 if __name__ == '__main__':
     main()

@@ -20,12 +20,12 @@ from node_socket import UdpSocket
 class City:
 
     def __init__(self, my_port: int, number_general: int) -> None:
-        self.number_general = number_general
         self.my_port = my_port
         self.node_socket = UdpSocket(my_port)
+        self.number_general = number_general
 
     def start(self):
-        logging.info("Listen to incoming messages...")
+        self.add_log_info("Listen to incoming messages...")
         status = []
         for i in range(self.number_general):
             message, address = self.node_socket.listen()
@@ -38,8 +38,8 @@ class City:
             else:
                 action = "ATTACK"
                 message = f"{general} {action} us!"
-            logging.info(message)
-        logging.info("Concluding what happen...")
+            self.add_log_info(message)
+        self.add_log_info("Concluding what happen...")
         logging.debug(f"status: {status}")
         retreat_counter = 0
         attack_counter = 0
@@ -57,8 +57,12 @@ class City:
         elif retreat_counter == result_list_length:
             general_consensus = "RETREAT"
         result = f"GENERAL CONSENSUS: {general_consensus}"
-        logging.info(result)
+        self.add_log_info(f"Status: {status}")
+        self.add_log_info(result)
         return general_consensus
+
+    def add_log_info(self, message):
+        logging.info(f"City-{message}")
 
 
 def thread_exception_handler(args):
