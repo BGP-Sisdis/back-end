@@ -19,15 +19,17 @@ from node_socket import UdpSocket
 
 class City:
 
-    def __init__(self, my_port: int, number_general: int) -> None:
+    def __init__(self, my_port: int, number_loyal_general: int, number_general: int ) -> None:
         self.my_port = my_port
         self.node_socket = UdpSocket(my_port)
+        self.number_loyal_general = number_loyal_general
         self.number_general = number_general
+  
 
     def start(self):
         self.add_log_info("Listen to incoming messages...")
         status = []
-        for i in range(self.number_general):
+        for i in range(self.number_loyal_general):
             message, address = self.node_socket.listen()
             general = message.split("~")[0]
             action = int(message.split("~")[1].split("=")[1])
@@ -50,11 +52,13 @@ class City:
             else:
                 retreat_counter += 1
         general_consensus = "FAILED"
+        number_traitor = self.number_general - self.number_loyal_general
+        is_satified = True if self.number_general >= 3*number_traitor + 1 else False
         if result_list_length < 2:
             general_consensus = "ERROR_LESS_THAN_TWO_GENERALS"
-        elif attack_counter == result_list_length:
+        elif attack_counter == result_list_length and is_satified:
             general_consensus = "ATTACK"
-        elif retreat_counter == result_list_length:
+        elif retreat_counter == result_list_length and is_satified:
             general_consensus = "RETREAT"
         result = f"GENERAL CONSENSUS: {general_consensus}"
         self.add_log_info(f"Status: {status}")
@@ -69,13 +73,13 @@ def thread_exception_handler(args):
     logging.error(f"Uncaught exception", exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
 
 
-def main(city_port: int, number_general: int):
+def main(city_port: int, number_loyal_general: int, number_general: int):
     threading.excepthook = thread_exception_handler
     try:
         logging.debug(f"city_port: {city_port}")
         logging.info(f"City is running...")
-        logging.info(f"Number of loyal general: {number_general}")
-        city = City(my_port=city_port, number_general=number_general)
+        logging.info(f"Number of loyal general: {number_loyal_general}")
+        city = City(my_port=city_port, number_loyal_general=number_loyal_general, number_general=number_general)
         return city.start()
 
     except Exception:
