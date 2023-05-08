@@ -51,7 +51,7 @@ class General:
 
         self.conclude_action(self.orders)
 
-    def _most_common(self, lst):
+    def _most_order(self, lst):
         return max(set(lst), key=lst.count)
 
     def listen_procedure(self):
@@ -89,7 +89,7 @@ class General:
             self.add_log_info("I am a traitor...")
             return None
         else:
-            order = self._most_common(orders)
+            order = self._most_order(orders)
             action = "ATTACK" if order else "RETREAT"
             self.add_log_info(f"action: {action}")
             message = f"general_{self.my_id}~action={order}"
@@ -118,10 +118,10 @@ class SupremeGeneral(General):
             general_port = self.general_port_dictionary[i]
             logging.debug(f"my_port: {self.my_port}")
             logging.debug(f"general_port: {general_port}")
-            self.add_log_info(f"Send message to general {i} with port {general_port}")
             if self.is_traitor:
                 random_order = random.randint(0,1)
                 order = Order.RETREAT if random_order == 0 else Order.ATTACK
+            self.add_log_info(f"Send message to general {i}: {order}")
             result.append(order)
             message_send = f"{message}{order}"
             self.node_socket.send(message_send, general_port)
@@ -168,9 +168,9 @@ def main(is_traitor: bool, node_id: int, ports: list, number_of_general: int,
     threading.excepthook = thread_exception_handler
     try:
         if node_id > 0:
-            logging.info(f"General {node_id} is running...")
+            logging.info(f"General{node_id}-is running...")
         else:
-            logging.info("Supreme general is running...")
+            logging.info("SupremeGeneral-is running...")
         logging.debug(f"is_traitor: {is_traitor}")
         logging.debug(f"ports: {pformat(ports)}")
         logging.debug(f"my_port: {my_port}")
