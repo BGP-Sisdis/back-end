@@ -148,9 +148,9 @@ def execution(roles, order, session_id):
 
     logger.info("Running city...")
     # reload_logging_config_node(f"city.txt")
-    number_general = roles.count(False)
-    logger.debug(f"number_general: {number_general}")
-    return city.main(starting_port+number_of_general, number_general)
+    number_loyal_general = roles.count(False)
+    logger.debug(f"number_general: {number_loyal_general}")
+    return city.main(starting_port+number_of_general, number_loyal_general, len(roles))
 
 if __name__ == '__main__':
     main()
