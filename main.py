@@ -49,4 +49,8 @@ async def run_simulator(roles: str, command: str):
     os.remove(f"logs/{session_id}.txt")
     sessions.remove(session_id)
 
-    return {"result": logs}
+    response = {
+        "result": result,
+        "logs": logs
+    }
+    return response
