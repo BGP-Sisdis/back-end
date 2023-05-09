@@ -50,8 +50,13 @@ async def run_simulator(roles: str, command: str):
     result = execution(roles, command.upper(), session_id)
 
     log_file = open(f"logs/{session_id}.txt", "r")
-    logs = log_file.readlines()
+    logs_lines = log_file.readlines()
     log_file.close()
+    logs = []
+
+    for log in logs_lines:
+        log = log.replace("\n", "")
+        logs.append(log.split("-"))
 
     os.remove(f"logs/{session_id}.txt")
     sessions.remove(session_id)
