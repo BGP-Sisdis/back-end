@@ -61,6 +61,16 @@ async def run_simulator(roles: str, command: str):
         log = log.replace("\n", "")
         logs.append(log.split("-"))
 
+    for i in range(len(roles)):
+        if roles[i]:
+            general_name = "Supreme General" if i == 0 else f"General {i}"
+            generals_action.append(f"{general_name}: NO ACTION (TRAITOR)")
+
+    # Sorting general action
+    generals_action.sort()
+    last_element = generals_action.pop()
+    generals_action.insert(0, last_element)
+
     os.remove(f"logs/{session_id}.txt")
     sessions.remove(session_id)
 
