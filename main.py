@@ -41,13 +41,13 @@ async def run_simulator(roles: str, command: str):
     roles = [True if i == "t" else False for i in roles]
 
     if len(roles) > 30:
-        msg = f"The number of generals exceeds the maximum limit. The maximum number of nodes is 32, but you have {len(roles)} generals."
+        msg = f"The number of generals exceeds the maximum limit. The maximum number of nodes is 30, but you have {len(roles)} generals."
         raise HTTPException(status_code=400, detail={"msg": msg})
     if command.lower() != "attack" and command.lower != "retreat":
         msg = "Command not found. Your command is neither 'attack' nor 'retreat'."
         raise HTTPException(status_code=400, detail={"msg": msg})
 
-    result = execution(roles, command.upper(), session_id)
+    generals_action, general_consensus = execution(roles, command.upper(), session_id)
 
     log_file = open(f"logs/{session_id}.txt", "r")
     logs_lines = log_file.readlines()
@@ -62,7 +62,8 @@ async def run_simulator(roles: str, command: str):
     sessions.remove(session_id)
 
     response = {
-        "result": result,
+        "generals_action": generals_action,
+        "general_consensus": general_consensus,
         "logs": logs
     }
 

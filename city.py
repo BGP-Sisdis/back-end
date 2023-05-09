@@ -61,7 +61,7 @@ class City:
         self.add_log_info(f"Generals' action: {generals_action}")
         self.add_log_info(f"GENERAL CONSENSUS: {general_consensus}")
 
-        return general_consensus
+        return generals_action, general_consensus
 
     def add_log_info(self, message):
         logging.info(f"City-{message}")
