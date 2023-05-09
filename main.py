@@ -1,6 +1,5 @@
-from datetime import datetime
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sim_main import execution
 
@@ -35,17 +34,25 @@ async def root():
 
 @app.get('/run/{command}/{roles}')
 async def run_simulator(roles: str, command: str):
-    # command: "ATTACK" or "RETREAT"
-    # roles example: "ltltltltlt"
 
-    roles = [True if i == "t" else False for i in roles]
     session_id = str(uuid.uuid4())
     sessions.add(session_id)
 
+    roles = [True if i == "t" else False for i in roles]
+
+    if len(roles) > 30:
+        msg = f"The number of generals exceeds the maximum limit. The maximum number of nodes is 32, but you have {len(roles)} generals."
+        raise HTTPException(status_code=400, detail={"msg": msg})
+    if command.lower() != "attack" and command.lower != "retreat":
+        msg = "Command not found. Your command is neither 'attack' nor 'retreat'."
+        raise HTTPException(status_code=400, detail={"msg": msg})
+
     result = execution(roles, command.upper(), session_id)
+
     log_file = open(f"logs/{session_id}.txt", "r")
     logs = log_file.readlines()
     log_file.close()
+
     os.remove(f"logs/{session_id}.txt")
     sessions.remove(session_id)
 
@@ -53,4 +60,5 @@ async def run_simulator(roles: str, command: str):
         "result": result,
         "logs": logs
     }
+
     return response
