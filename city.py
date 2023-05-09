@@ -50,7 +50,7 @@ class City:
         general_consensus = "FAILED"
         number_traitor = self.number_general - self.number_loyal_general
         is_satified = True if self.number_general >= 3*number_traitor + 1 else False
-
+        
         if result_list_length < 2:
             general_consensus = "ERROR_LESS_THAN_TWO_GENERALS"
         elif attack_counter == result_list_length and is_satified:

@@ -40,10 +40,13 @@ async def run_simulator(roles: str, command: str):
 
     roles = [True if i == "t" else False for i in roles]
 
+    if len(roles) < 3:
+        msg = f"The number of generals not reach the minimum. The minimum number of nodes is 3, but you have {len(roles)} generals."
+        raise HTTPException(status_code=400, detail={"msg": msg})
     if len(roles) > 30:
         msg = f"The number of generals exceeds the maximum limit. The maximum number of nodes is 30, but you have {len(roles)} generals."
         raise HTTPException(status_code=400, detail={"msg": msg})
-    if command.lower() != "attack" and command.lower != "retreat":
+    if command.lower() != "attack" and command.lower() != "retreat":
         msg = "Command not found. Your command is neither 'attack' nor 'retreat'."
         raise HTTPException(status_code=400, detail={"msg": msg})
 
