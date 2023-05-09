@@ -1,5 +1,4 @@
 import logging
-import pprint
 import threading
 import time
 import random
@@ -30,12 +29,12 @@ class General:
         self.general_port_dictionary = {}
         for i in range(0, self.number_of_general):
             self.general_port_dictionary[i] = ports[i]
-        logging.debug(f"self.general_port_dictionary: {pformat(self.general_port_dictionary)}")
+        logging.debug(f"self.general_port_dictionary: {self.general_port_dictionary}")
 
         self.port_general_dictionary = {}
         for key, value in self.general_port_dictionary.items():
             self.port_general_dictionary[value] = key
-        logging.debug(f"self.port_general_dictionary: {pprint.pformat(self.port_general_dictionary)}")
+        logging.debug(f"self.port_general_dictionary: {self.port_general_dictionary}")
 
     def start(self):
         self.add_log_info("Start listening for incoming messages...")
@@ -50,7 +49,7 @@ class General:
             self.orders_str.append(order_str)
 
             self.add_log_info(f"Got incoming message from {sender_log}: {order_str}")
-            self.add_log_info(f"Message list: {pformat(self.orders_str)}")
+            self.add_log_info(f"Message list: {self.orders_str}")
 
             self.sending_procedure(sender, order)
 
