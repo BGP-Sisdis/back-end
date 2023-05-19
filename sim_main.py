@@ -38,7 +38,7 @@ def reload_logging_config_node(filename):
                         level=logging.INFO)
 
 def handle_exception(exc_type, exc_value, exc_traceback):
-    logger.error(f"Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
 def main():
     parser = ArgumentParser()
@@ -69,7 +69,7 @@ def execution(roles, order, session_id):
     Parameters
     ----------
     roles : list
-        List of generals' role (default is None). 
+        List of generals' role (default is None).
         Role is True when general is a traitor and False when general is loyal.
         Example: [False, True, False, False]
 
@@ -93,14 +93,14 @@ def execution(roles, order, session_id):
     while True:
         starting_port = random.randint(10000, 11000)
         node_ports = [port for port in range(starting_port, starting_port + number_of_general)]
-        
+
         port_set = set(node_ports)
         same_port = used_port.intersection(node_ports)
         if len(same_port) == 0:
             break
 
     used_port = used_port.union(port_set)
-    
+
     logger.debug(f"node_ports: {node_ports}")
     logger.info("Done determining the ports that will be used...")
 
@@ -114,8 +114,6 @@ def execution(roles, order, session_id):
     logger.info("Start running multiple nodes...")
     for node_id in range(number_of_general):
         is_supreme_general = False if node_id else True
-        # file_name_prefix = f"general{node_id}" if not is_supreme_general else "supreme_general"
-        # reload_logging_config_node(f"{file_name_prefix}.txt")
         logger.debug(f"General port: {starting_port + node_id}")
         if is_supreme_general:
             process = NodeProcess(target=node.main, args=(
@@ -127,7 +125,6 @@ def execution(roles, order, session_id):
                 order,
                 is_supreme_general,
                 starting_port + number_of_general,
-                
             ))
         else:
             process = NodeProcess(target=node.main, args=(
@@ -138,7 +135,7 @@ def execution(roles, order, session_id):
                 starting_port + node_id,
                 order,
                 False,
-                starting_port + number_of_general,  
+                starting_port + number_of_general,
             ))
         process.start()
         list_nodes.append(process)

@@ -59,7 +59,8 @@ async def run_simulator(roles: str, command: str):
 
     for log in logs_lines:
         log = log.replace("\n", "")
-        logs.append(log.split("-"))
+        log = log.split("-")
+        logs.append({"time": log[0], "node": log[1], "step":log[2], "message": log[3]})
 
     for i in range(len(roles)):
         if roles[i]:
