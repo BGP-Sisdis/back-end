@@ -74,7 +74,7 @@ class City:
         elif retreat_counter == result_list_length and is_satified:
             general_consensus = "RETREAT"
         elif (attack_counter == result_list_length or retreat_counter == result_list_length) and is_satified == False:
-            general_consensus = "UNCERTAIN VALIDTY"
+            general_consensus = "UNCERTAIN VALIDITY"
 
         return general_consensus
 
