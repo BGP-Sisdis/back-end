@@ -15,7 +15,7 @@ class Order:
 
 class General:
 
-    def __init__(self, my_id: int, is_traitor: bool, my_port: int, ports: list, 
+    def __init__(self, my_id: int, is_traitor: bool, my_port: int, ports: list,
                  node_socket: UdpSocket, city_port: int, number_of_general: int):
         self.my_id = my_id
         self.city_port = city_port
@@ -38,8 +38,7 @@ class General:
 
     def start(self):
         self.add_log_info(1, f"General {self.my_id} is starting...")
-
-        # self.add_log_info("Start listening for incoming messages...")
+        is_get_msg_from_other = False
 
         for i in range(self.number_of_general - 1):
             incoming_message: list = self.listen_procedure()
@@ -52,10 +51,15 @@ class General:
             self.orders_str.append(order_str)
 
             if sender_log == "Supreme General":
-                self.add_log_info(3, f"Got incoming message from {sender_log}: {order_str}")
+                self.add_log_info(3, "Receiving a message from Supreme General...")
+                self.add_log_info(3, f"Receive a message from {sender_log}: {order_str}")
                 self.add_log_info(3, f"Message list: {self.orders_str}")
             else:
-                self.add_log_info(5, f"Got incoming message from {sender_log}: {order_str}")
+                if is_get_msg_from_other == False:
+                    self.add_log_info(5, "Receiving messages from other generals...")
+                    is_get_msg_from_other= True
+
+                self.add_log_info(5, f"Receive a message from {sender_log}: {order_str}")
                 self.add_log_info(5, f"Message list: {self.orders_str}")
 
             self.sending_procedure(sender, order)
@@ -82,11 +86,8 @@ class General:
             order_str = "ATTACK" if order == Order.ATTACK else "RETREAT"
             message = f"general_{self.my_id}~order={order}"
 
-            # self.add_log_info(4, f"Sending message to other generals: {order_str}")
             for other_general_port, value in self.port_general_dictionary.items():
-                if value == 0:
-                    continue
-                if other_general_port == self.my_port:
+                if value == 0 or other_general_port == self.my_port:
                     continue
 
                 thread = threading.Thread(target=self.node_socket.send,
@@ -94,8 +95,7 @@ class General:
                 thread.start()
                 self.add_log_info(4, f"Send message to General {self.port_general_dictionary[other_general_port]}: {order_str}")
 
-
-            self.add_log_info(4, "Finish sending supreme generals' message to other generals...")
+            self.add_log_info(4, "Finish sending supreme general's message to other generals...")
 
             return message
 
@@ -106,16 +106,16 @@ class General:
         if self.is_traitor:
             self.add_log_info(6, "Action: NO ACTION (TRAITOR)")
             return None
-        else:
-            order = self._most_order(orders)
-            action = "ATTACK" if order else "RETREAT"
-            self.add_log_info(6, f"Action: {action}")
 
-            message = f"general_{self.my_id}~action={order}"
-            logging.debug(f"self.city_port: {self.city_port}")
+        order = self._most_order(orders)
+        action = "ATTACK" if order else "RETREAT"
+        self.add_log_info(6, f"Action: {action}")
 
-            self.node_socket.send(message, self.city_port)
-            self.add_log_info(7, "Doing action to city...")
+        message = f"general_{self.my_id}~action={order}"
+        logging.debug(f"self.city_port: {self.city_port}")
+
+        self.node_socket.send(message, self.city_port)
+        self.add_log_info(7, "Taking action against the city...")
 
         self.add_log_info(9, "Done")
 
@@ -169,13 +169,14 @@ class SupremeGeneral(General):
 
         if self.is_traitor:
             self.add_log_info(6, "Action: NO ACTION (TRAITOR)")
-            return
-        elif self.order:
+            return None
+
+        if self.order:
             self.add_log_info(6, "Action: ATTACK")
-            self.add_log_info(7, "Doing action to city...")
         else:
             self.add_log_info(6, "Action: RETREAT")
-            self.add_log_info(7, "Doing action to city...")
+
+        self.add_log_info(7, "Taking action against the city...")
 
         message = f"supreme_general~action={self.order}"
 
